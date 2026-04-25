@@ -80,10 +80,26 @@ export async function* streamForProvider(opts: {
       requestId,
       providerTag: "open_router",
       defaultMaxTokens: settings.openRouterMaxTokens || undefined,
-      extraHeaders: {
-        "HTTP-Referer": "https://github.com/acoderacom/cc-opencodego-proxy",
-        "X-Title": "cc-opencodego-proxy",
-      },
+      clientSignal,
+    });
+    return;
+  }
+
+  if (provider === "baseten") {
+    if (!settings.basetenApiKey) {
+      throw new UpstreamConfigError(
+        "BASETEN_API_KEY is not set. Get a key at https://app.baseten.co/settings/api_keys",
+      );
+    }
+    yield* streamOpenAICompat(req, {
+      baseUrl: settings.basetenBaseUrl,
+      apiKey: settings.basetenApiKey,
+      rateLimiter,
+      thinkingEnabled: settings.enableThinking,
+      readTimeoutMs: settings.httpReadTimeoutMs,
+      requestId,
+      providerTag: "baseten",
+      defaultMaxTokens: settings.basetenMaxTokens || undefined,
       clientSignal,
     });
     return;

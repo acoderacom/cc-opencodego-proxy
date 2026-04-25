@@ -115,7 +115,7 @@ export interface ResolvedRequest {
   readonly resolvedProviderModel: string;
   /** The upstream model name only (the slash-suffix of resolvedProviderModel). */
   readonly resolvedModel: string;
-  /** Resolved provider type — "opencode" or "open_router". */
+  /** Resolved provider type — "opencode", "open_router", or "baseten". */
   readonly providerType: ProviderType;
   /** A stable request id for logging. */
   readonly requestId: string;
@@ -123,4 +123,4 @@ export interface ResolvedRequest {
   readonly body: AnthropicMessagesRequest;
 }
 
-export type ProviderType = "opencode" | "open_router";
+export type ProviderType = "opencode" | "open_router" | "baseten";

@@ -5,7 +5,7 @@
 
 import type { ProviderType } from "./types.ts";
 
-const VALID_PROVIDERS = new Set<ProviderType>(["opencode", "open_router"]);
+const VALID_PROVIDERS = new Set<ProviderType>(["opencode", "open_router", "baseten"]);
 
 function num(name: string, fallback: number): number {
   const raw = Bun.env[name];
@@ -47,14 +47,14 @@ function assertValidModel(envName: string, value: string): void {
   if (slash <= 0 || slash >= value.length - 1) {
     throw new Error(
       `${envName}=${JSON.stringify(value)} must be prefixed with a provider: ` +
-        `"opencode/<model>" or "open_router/<model>"`,
+        `"opencode/<model>", "open_router/<model>", or "baseten/<model>"`,
     );
   }
   const provider = value.slice(0, slash) as ProviderType;
   if (!VALID_PROVIDERS.has(provider)) {
     throw new Error(
       `${envName}=${JSON.stringify(value)} uses unknown provider ` +
-        `${JSON.stringify(provider)}. Valid: opencode, open_router`,
+        `${JSON.stringify(provider)}. Valid: opencode, open_router, baseten`,
     );
   }
 }
@@ -70,6 +70,8 @@ export interface Settings {
   readonly opencodeApiKey: string;
   readonly opencodeBaseUrl: string;
   readonly opencodeOpenAIModels: ReadonlySet<string>;
+  readonly basetenApiKey: string;
+  readonly basetenBaseUrl: string;
 
   readonly enableThinking: boolean;
   readonly providerRateLimit: number;
@@ -77,6 +79,7 @@ export interface Settings {
   readonly providerMaxConcurrency: number;
   readonly openCodeMaxTokens: number;
   readonly openRouterMaxTokens: number;
+  readonly basetenMaxTokens: number;
 
   readonly httpReadTimeoutMs: number;
   readonly httpConnectTimeoutMs: number;
@@ -119,6 +122,8 @@ export function loadSettings(): Settings {
     opencodeApiKey: Bun.env.OPENCODE_API_KEY ?? "",
     opencodeBaseUrl: Bun.env.OPENCODE_BASE_URL ?? "https://opencode.ai/zen/go/v1",
     opencodeOpenAIModels: csv("OPENCODE_OPENAI_MODELS"),
+    basetenApiKey: Bun.env.BASETEN_API_KEY ?? "",
+    basetenBaseUrl: Bun.env.BASETEN_BASE_URL?.trim() || "https://inference.baseten.co/v1",
 
     enableThinking: bool("ENABLE_THINKING", true),
     providerRateLimit: num("PROVIDER_RATE_LIMIT", 40),
@@ -126,6 +131,7 @@ export function loadSettings(): Settings {
     providerMaxConcurrency: num("PROVIDER_MAX_CONCURRENCY", 5),
     openCodeMaxTokens: num("OPENCODE_MAX_TOKENS", 0),
     openRouterMaxTokens: num("OPENROUTER_MAX_TOKENS", 0),
+    basetenMaxTokens: num("BASETEN_MAX_TOKENS", 0),
 
     httpReadTimeoutMs: num("HTTP_READ_TIMEOUT", 120) * 1000,
     httpConnectTimeoutMs: num("HTTP_CONNECT_TIMEOUT", 5) * 1000,
