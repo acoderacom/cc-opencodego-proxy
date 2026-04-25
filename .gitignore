@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Bun (legacy binary lockfile; bun.lock is the text format and IS committed)
+bun.lockb
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Env / secrets — .env.example IS committed, .env and local overrides are not
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+
+# Logs
+*.log
+bun-debug-*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+._*
+
+# Editor / IDE (personal config — commit these yourself if the team agrees to)
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code (user-local state if `claude` is run inside the repo)
+.claude/
+
+# Test coverage
+coverage/

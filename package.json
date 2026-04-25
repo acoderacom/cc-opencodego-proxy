@@ -1,0 +1,32 @@
+{
+  "name": "cc-opencodego-proxy",
+  "version": "0.1.0",
+  "description": "Use OpenCode Go with Claude Code",
+  "type": "module",
+  "module": "src/cli.ts",
+  "bin": {
+    "cc-opencodego-proxy": "./dist/cc-opencodego-proxy"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "dev": "bun --watch src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --write src/",
+    "format": "biome format --write src/",
+    "check": "biome check src/ && tsc --noEmit",
+    "test": "bun test",
+    "build": "bun build src/cli.ts --compile --minify --sourcemap --define BUILD_VERSION='\"0.1.0\"' --outfile dist/cc-opencodego-proxy",
+    "build:linux-x64": "bun build src/cli.ts --compile --target=bun-linux-x64 --minify --define BUILD_VERSION='\"0.1.0\"' --outfile dist/cc-opencodego-proxy-linux-x64",
+    "build:linux-arm64": "bun build src/cli.ts --compile --target=bun-linux-arm64 --minify --define BUILD_VERSION='\"0.1.0\"' --outfile dist/cc-opencodego-proxy-linux-arm64",
+    "build:darwin-arm64": "bun build src/cli.ts --compile --target=bun-darwin-arm64 --minify --define BUILD_VERSION='\"0.1.0\"' --outfile dist/cc-opencodego-proxy-darwin-arm64",
+    "build:darwin-x64": "bun build src/cli.ts --compile --target=bun-darwin-x64 --minify --define BUILD_VERSION='\"0.1.0\"' --outfile dist/cc-opencodego-proxy-darwin-x64",
+    "build:windows-x64": "bun build src/cli.ts --compile --target=bun-windows-x64 --minify --define BUILD_VERSION='\"0.1.0\"' --outfile dist/cc-opencodego-proxy-windows-x64.exe",
+    "build:all": "bun run build:linux-x64 && bun run build:linux-arm64 && bun run build:darwin-arm64 && bun run build:darwin-x64 && bun run build:windows-x64"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.13",
+    "@types/bun": "latest",
+    "typescript": "^6.0.3"
+  }
+}
