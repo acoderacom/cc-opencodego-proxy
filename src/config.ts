@@ -66,6 +66,7 @@ export interface Settings {
   readonly modelHaiku: string | null;
 
   readonly openRouterApiKey: string;
+  readonly openRouterBaseUrl: string;
   readonly opencodeApiKey: string;
   readonly opencodeBaseUrl: string;
   readonly opencodeOpenAIModels: ReadonlySet<string>;
@@ -114,6 +115,7 @@ export function loadSettings(): Settings {
     modelHaiku: modelOrNull("MODEL_HAIKU"),
 
     openRouterApiKey: Bun.env.OPENROUTER_API_KEY ?? "",
+    openRouterBaseUrl: Bun.env.OPENROUTER_BASE_URL?.trim() || "https://openrouter.ai/api/v1",
     opencodeApiKey: Bun.env.OPENCODE_API_KEY ?? "",
     opencodeBaseUrl: Bun.env.OPENCODE_BASE_URL ?? "https://opencode.ai/zen/go/v1",
     opencodeOpenAIModels: csv("OPENCODE_OPENAI_MODELS"),

@@ -10,8 +10,6 @@ import type { AnthropicMessagesRequest, ProviderType } from "../types.ts";
 import { streamOpencodeAnthropic } from "./anthropic-passthrough.ts";
 import { streamOpenAICompat } from "./openai-compat.ts";
 
-const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-
 export async function* streamForProvider(opts: {
   provider: ProviderType;
   resolvedModel: string;
@@ -74,7 +72,7 @@ export async function* streamForProvider(opts: {
       );
     }
     yield* streamOpenAICompat(req, {
-      baseUrl: OPENROUTER_BASE_URL,
+      baseUrl: settings.openRouterBaseUrl,
       apiKey: settings.openRouterApiKey,
       rateLimiter,
       thinkingEnabled: settings.enableThinking,
