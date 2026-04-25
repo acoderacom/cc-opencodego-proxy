@@ -74,6 +74,9 @@ export interface Settings {
   readonly providerRateLimit: number;
   readonly providerRateWindowSec: number;
   readonly providerMaxConcurrency: number;
+  readonly openCodeMaxTokens: number;
+  readonly openRouterMaxTokens: number;
+
   readonly httpReadTimeoutMs: number;
   readonly httpConnectTimeoutMs: number;
 
@@ -119,6 +122,9 @@ export function loadSettings(): Settings {
     providerRateLimit: num("PROVIDER_RATE_LIMIT", 40),
     providerRateWindowSec: num("PROVIDER_RATE_WINDOW", 60),
     providerMaxConcurrency: num("PROVIDER_MAX_CONCURRENCY", 5),
+    openCodeMaxTokens: num("OPENCODE_MAX_TOKENS", 0),
+    openRouterMaxTokens: num("OPENROUTER_MAX_TOKENS", 0),
+
     httpReadTimeoutMs: num("HTTP_READ_TIMEOUT", 120) * 1000,
     httpConnectTimeoutMs: num("HTTP_CONNECT_TIMEOUT", 5) * 1000,
 

@@ -11,7 +11,6 @@ import { streamOpencodeAnthropic } from "./anthropic-passthrough.ts";
 import { streamOpenAICompat } from "./openai-compat.ts";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const OPENROUTER_DEFAULT_MAX_TOKENS = 81920;
 
 export async function* streamForProvider(opts: {
   provider: ProviderType;
@@ -49,6 +48,7 @@ export async function* streamForProvider(opts: {
         readTimeoutMs: settings.httpReadTimeoutMs,
         requestId,
         providerTag: "opencode.openai",
+        defaultMaxTokens: settings.openCodeMaxTokens || undefined,
         clientSignal,
       });
     } else {
@@ -81,7 +81,7 @@ export async function* streamForProvider(opts: {
       readTimeoutMs: settings.httpReadTimeoutMs,
       requestId,
       providerTag: "open_router",
-      defaultMaxTokens: OPENROUTER_DEFAULT_MAX_TOKENS,
+      defaultMaxTokens: settings.openRouterMaxTokens || undefined,
       extraHeaders: {
         "HTTP-Referer": "https://github.com/acoderacom/cc-opencodego-proxy",
         "X-Title": "cc-opencodego-proxy",

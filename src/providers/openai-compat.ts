@@ -73,7 +73,9 @@ export async function* streamOpenAICompat(
       }
 
       if (response.status === 429 && attempt < MAX_RATE_LIMIT_RETRIES) {
-        await response.body?.cancel();
+        if (response.body) {
+          try { await response.body.cancel(); } catch { /* already consumed or errored */ }
+        }
         const retryAfter = response.headers.get("retry-after");
         const delayMs = computeRetryDelayMs(retryAfter, attempt);
         opts.rateLimiter.setBlocked(delayMs / 1000);

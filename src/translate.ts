@@ -326,6 +326,7 @@ export async function* openAIStreamToAnthropicSSE(opts: {
     yield errorFrame(
       `OpenAI stream translation error: ${(e as Error).message ?? String(e)}`,
     );
+    return;
   }
 
   yield* flushPending(state, opts.thinkingEnabled);
