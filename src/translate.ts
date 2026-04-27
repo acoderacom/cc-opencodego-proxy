@@ -96,7 +96,7 @@ function pushConverted(
           type: "function",
           function: {
             name: block.name,
-            arguments: JSON.stringify(block.input ?? {}),
+            arguments: JSON.stringify(block.input),
           },
         });
         break;
@@ -182,7 +182,7 @@ export function estimateInputTokens(req: AnthropicMessagesRequest): number {
             proseChars += block.thinking.length;
             break;
           case "tool_use":
-            jsonChars += JSON.stringify(block.input ?? {}).length;
+            jsonChars += JSON.stringify(block.input).length;
             break;
           case "tool_result":
             // Tool output is overwhelmingly code/JSON, not prose — count it
@@ -293,7 +293,14 @@ export async function* openAIStreamToAnthropicSSE(opts: {
         continue;
       }
 
-      const delta = choice.delta ?? {};
+      const delta = choice.delta;
+      if (!delta) {
+        if (choice.finish_reason) {
+          yield* flushPending(state, opts.thinkingEnabled);
+          yield* closeActive(state);
+        }
+        continue;
+      }
 
       // reasoning_content -> thinking blocks
       if (opts.thinkingEnabled && delta.reasoning_content) {
@@ -625,8 +632,6 @@ export function serializeAnthropicPassthrough(
     ...rest,
     stream: true,
   };
-  if (opts.thinkingEnabled && thinking) {
-    (out as { thinking?: AnthropicMessagesRequest["thinking"] }).thinking = thinking;
-  }
+  if (opts.thinkingEnabled && thinking) out.thinking = thinking;
   return out;
 }

@@ -28,7 +28,9 @@ export interface AnthropicToolUseBlock {
 export interface AnthropicToolResultBlock {
   type: "tool_result";
   tool_use_id: string;
-  content: string | Array<AnthropicTextBlock>;
+  // Upstreams sometimes attach non-text blocks (e.g. images) inside tool
+  // results; we only consume `.text` so unknown shapes are tolerated.
+  content: string | Array<AnthropicTextBlock | { type: string; text?: string }>;
 }
 
 export interface AnthropicThinkingBlock {
@@ -68,7 +70,10 @@ export interface AnthropicMessagesRequest {
   metadata?: Record<string, unknown>;
   tools?: AnthropicTool[];
   tool_choice?: Record<string, unknown>;
-  thinking?: { enabled: boolean } | Record<string, unknown>;
+  thinking?:
+    | { type: "enabled"; budget_tokens?: number }
+    | { type: "disabled" }
+    | Record<string, unknown>;
 }
 
 // ---------- OpenAI (outbound for the chat-completions path) ----------

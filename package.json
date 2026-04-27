@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Use OpenCode Go with Claude Code",
   "type": "module",
+  "license": "MIT",
   "module": "src/cli.ts",
   "bin": {
     "cc-opencodego-proxy": "./dist/cc-opencodego-proxy"

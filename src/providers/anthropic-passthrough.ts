@@ -48,6 +48,7 @@ export async function* streamOpencodeAnthropic(
   };
   if (opts.anthropicBeta) headers["anthropic-beta"] = opts.anthropicBeta;
 
+  const estimatedInput = estimateInputTokens(req);
   let release = await opts.rateLimiter.acquireConcurrencySlot();
   try {
     for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt++) {
@@ -74,7 +75,13 @@ export async function* streamOpencodeAnthropic(
       }
 
       if (response.status === 429 && attempt < MAX_RATE_LIMIT_RETRIES) {
-        await response.body?.cancel();
+        if (response.body) {
+          try {
+            await response.body.cancel();
+          } catch {
+            /* already consumed or errored */
+          }
+        }
         const retryAfter = response.headers.get("retry-after");
         const delayMs = computeRetryDelayMs(retryAfter, attempt);
         opts.rateLimiter.setBlocked(delayMs / 1000);
@@ -107,7 +114,6 @@ export async function* streamOpencodeAnthropic(
 
       // Track minimal state so we can synthesize terminal frames if the
       // upstream stream ends without a `message_stop` (error, disconnect).
-      const estimatedInput = estimateInputTokens(req);
       let sawMessageStart = false;
       let sawMessageStop = false;
       let activeBlockIndex: number | null = null;
@@ -184,14 +190,18 @@ function combineSignals(client: AbortSignal | undefined, timeoutMs: number): Abo
  * we replace it with our char-based estimate so Claude Code's context meter
  * shows real usage.
  */
+interface MessageStartPayload {
+  message?: { usage?: { input_tokens?: number } & Record<string, unknown> } & Record<
+    string,
+    unknown
+  >;
+}
+
 function patchMessageStart(data: string, estimatedInput: number): string {
   try {
-    const parsed = JSON.parse(data);
-    if (parsed?.message?.usage) {
-      if (!parsed.message.usage.input_tokens) {
-        parsed.message.usage.input_tokens = estimatedInput;
-      }
-    }
+    const parsed: MessageStartPayload = JSON.parse(data);
+    const usage = parsed.message?.usage;
+    if (usage && !usage.input_tokens) usage.input_tokens = estimatedInput;
     return JSON.stringify(parsed);
   } catch {
     return data;
@@ -200,7 +210,7 @@ function patchMessageStart(data: string, estimatedInput: number): string {
 
 function tryReadIndex(data: string): number | null {
   try {
-    const parsed = JSON.parse(data) as { index?: unknown };
+    const parsed: { index?: unknown } = JSON.parse(data);
     return typeof parsed.index === "number" ? parsed.index : null;
   } catch {
     return null;

@@ -47,6 +47,7 @@ export async function* streamOpenAICompat(
     ...opts.extraHeaders,
   };
 
+  const estimatedInput = estimateInputTokens(req);
   let release = await opts.rateLimiter.acquireConcurrencySlot();
   try {
     for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt++) {
@@ -74,7 +75,11 @@ export async function* streamOpenAICompat(
 
       if (response.status === 429 && attempt < MAX_RATE_LIMIT_RETRIES) {
         if (response.body) {
-          try { await response.body.cancel(); } catch { /* already consumed or errored */ }
+          try {
+            await response.body.cancel();
+          } catch {
+            /* already consumed or errored */
+          }
         }
         const retryAfter = response.headers.get("retry-after");
         const delayMs = computeRetryDelayMs(retryAfter, attempt);
@@ -111,7 +116,7 @@ export async function* streamOpenAICompat(
         openAIBody: response.body,
         model: req.model,
         thinkingEnabled: opts.thinkingEnabled,
-        estimatedInputTokens: estimateInputTokens(req),
+        estimatedInputTokens: estimatedInput,
         parseLines: parseSSE,
       });
       return;

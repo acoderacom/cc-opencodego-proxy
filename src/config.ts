@@ -34,6 +34,10 @@ function csv(name: string): ReadonlySet<string> {
   );
 }
 
+function urlOrDefault(name: string, fallback: string): string {
+  return Bun.env[name]?.trim() || fallback;
+}
+
 function modelOrNull(name: string): string | null {
   const raw = Bun.env[name];
   if (!raw) return null;
@@ -118,12 +122,15 @@ export function loadSettings(): Settings {
     modelHaiku: modelOrNull("MODEL_HAIKU"),
 
     openRouterApiKey: Bun.env.OPENROUTER_API_KEY ?? "",
-    openRouterBaseUrl: Bun.env.OPENROUTER_BASE_URL?.trim() || "https://openrouter.ai/api/v1",
+    openRouterBaseUrl: urlOrDefault(
+      "OPENROUTER_BASE_URL",
+      "https://openrouter.ai/api/v1",
+    ),
     opencodeApiKey: Bun.env.OPENCODE_API_KEY ?? "",
-    opencodeBaseUrl: Bun.env.OPENCODE_BASE_URL ?? "https://opencode.ai/zen/go/v1",
+    opencodeBaseUrl: urlOrDefault("OPENCODE_BASE_URL", "https://opencode.ai/zen/go/v1"),
     opencodeOpenAIModels: csv("OPENCODE_OPENAI_MODELS"),
     basetenApiKey: Bun.env.BASETEN_API_KEY ?? "",
-    basetenBaseUrl: Bun.env.BASETEN_BASE_URL?.trim() || "https://inference.baseten.co/v1",
+    basetenBaseUrl: urlOrDefault("BASETEN_BASE_URL", "https://inference.baseten.co/v1"),
 
     enableThinking: bool("ENABLE_THINKING", true),
     providerRateLimit: num("PROVIDER_RATE_LIMIT", 40),

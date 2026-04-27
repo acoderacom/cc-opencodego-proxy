@@ -1,94 +1,56 @@
 # cc-opencodego-proxy
 
-Use your [OpenCode Go](https://opencode.ai/docs/go/) (or OpenRouter)
-subscription with [Claude Code](https://claude.com/claude-code). A tiny Bun
-binary that listens locally on `127.0.0.1:8082`, accepts Anthropic-shaped
-`/v1/messages` requests from Claude Code, and forwards them to the upstream —
-translating to OpenAI `/v1/chat/completions` when the target model needs it and
-re-framing the streaming response back to Anthropic SSE so Claude Code sees a
-native reply.
+Tiny Bun proxy. Use [OpenCode Go](https://opencode.ai/docs/go/), [OpenRouter](https://openrouter.ai), or [Baseten](https://baseten.co) inside [Claude Code](https://claude.com/claude-code). Listens on `127.0.0.1:8082`, accepts Anthropic-shaped `/v1/messages`, forwards upstream, re-frames OpenAI streams as Anthropic SSE.
 
-| Provider        | Format              | Path                                |
-| --------------- | ------------------- | ----------------------------------- |
-| **OpenCode Go** | Anthropic-native    | `/v1/messages` passthrough          |
-| **OpenCode Go** | OpenAI-compatible   | `/v1/chat/completions` + translator |
-| **OpenRouter**  | OpenAI-compatible   | `/v1/chat/completions` + translator |
+## Routing
 
-OpenCode is hybrid per-model: anything listed in `OPENCODE_OPENAI_MODELS` is
-routed through the OpenAI translator; everything else falls through to the
-Anthropic passthrough. Incoming Claude model ids are matched case-insensitively
-against `opus` / `sonnet` / `haiku` and routed to `MODEL_OPUS` / `MODEL_SONNET` /
-`MODEL_HAIKU`, with `MODEL` as the catch-all fallback.
+| Provider     | Format            | Path                                |
+|--------------|-------------------|-------------------------------------|
+| OpenCode Go  | Anthropic-native  | `/v1/messages` passthrough          |
+| OpenCode Go  | OpenAI-compatible | `/v1/chat/completions` + translator |
+| OpenRouter   | OpenAI-compatible | `/v1/chat/completions` + translator |
+| Baseten      | OpenAI-compatible | `/v1/chat/completions` + translator |
 
-## Dependencies
+OpenCode is hybrid per-model: anything in `OPENCODE_OPENAI_MODELS` routes through the OpenAI translator; rest passthrough. Inbound Claude model id is matched case-insensitively against `opus`/`sonnet`/`haiku` and routed to `MODEL_OPUS`/`MODEL_SONNET`/`MODEL_HAIKU`, with `MODEL` as fallback.
 
-Only `@types/bun` and `typescript` (dev-only, for the type-checker). All
-runtime plumbing uses Bun's built-ins:
-
-- `Bun.serve` with the `routes` API (Bun 1.2.3+)
-- `fetch` + `ReadableStream` for upstream streaming
-- `TextDecoder` for the line-by-line SSE parser
-- `AbortSignal.timeout` for request timeouts
-- `.env` is auto-loaded by Bun
-
-No Hono, no Zod, no Express, no Node polyfills.
-
-## Run
-
-### Option A — standalone binary (no Bun install needed)
+## Install
 
 ```bash
-bun run build                # native for the host platform → dist/cc-opencodego-proxy
-cp .env.example .env         # fill in OPENCODE_API_KEY
-./dist/cc-opencodego-proxy
+bun run build                # host binary → dist/cc-opencodego-proxy
+bun run build:all            # linux/darwin/windows × x64/arm64
 ```
 
-Cross-compile for other targets:
+Or run from source:
 
 ```bash
-bun run build:linux-x64       # → dist/cc-opencodego-proxy-linux-x64
-bun run build:linux-arm64     # → dist/cc-opencodego-proxy-linux-arm64
-bun run build:darwin-arm64    # → dist/cc-opencodego-proxy-darwin-arm64
-bun run build:darwin-x64      # → dist/cc-opencodego-proxy-darwin-x64
-bun run build:windows-x64     # → dist/cc-opencodego-proxy-windows-x64.exe
-bun run build:all             # all of the above
+bun install && cp .env.example .env && bun run start
 ```
 
-Typical sizes: ~60–110 MB (Bun runtime is embedded). Binary flags:
+## Config
 
-```
-cc-opencodego-proxy            start the proxy on $HOST:$PORT
-cc-opencodego-proxy --version
-cc-opencodego-proxy --help
-```
+| Env | Default | Notes |
+|-----|---------|-------|
+| `MODEL` | `opencode/minimax-m2.7` | Fallback. Must be `<provider>/<model>` |
+| `MODEL_OPUS` / `MODEL_SONNET` / `MODEL_HAIKU` | — | Family override |
+| `OPENCODE_API_KEY` | — | Required for opencode/* |
+| `OPENCODE_OPENAI_MODELS` | — | CSV of opencode models routed via OpenAI translator |
+| `OPENCODE_BASE_URL` | `https://opencode.ai/zen/go/v1` | |
+| `OPENROUTER_API_KEY` | — | Required for open_router/* |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | |
+| `BASETEN_API_KEY` | — | Required for baseten/* |
+| `BASETEN_BASE_URL` | `https://inference.baseten.co/v1` | |
+| `OPENCODE_MAX_TOKENS` / `OPENROUTER_MAX_TOKENS` / `BASETEN_MAX_TOKENS` | `0` | Default `max_tokens` when client omits |
+| `ENABLE_THINKING` | `true` | Forward thinking/reasoning blocks |
+| `PROVIDER_RATE_LIMIT` / `PROVIDER_RATE_WINDOW` | `40` / `60s` | Rolling-window cap |
+| `PROVIDER_MAX_CONCURRENCY` | `5` | In-flight stream cap |
+| `HTTP_READ_TIMEOUT` / `HTTP_CONNECT_TIMEOUT` | `120s` / `5s` | |
+| `HOST` / `PORT` | `127.0.0.1` / `8082` | Non-loopback requires `ANTHROPIC_AUTH_TOKEN` |
+| `ANTHROPIC_AUTH_TOKEN` | — | Inbound auth gate (`x-api-key` / `Authorization: Bearer`) |
+| `LOG_FILE` | — | Path or `silent` to mute |
 
-Config is env-only — `.env` is picked up from the binary's working directory.
+Provider prefixes valid: `opencode/`, `open_router/`, `baseten/`. Anything else fails fast.
 
-### Option B — source
-
-```bash
-bun install
-cp .env.example .env
-bun run start               # or: bun --watch src/cli.ts
-```
-
-The server listens on `http://127.0.0.1:8082` by default.
-
-## Configure
-
-Every knob lives in `.env`. `.env.example` is the authoritative reference,
-grouped and commented. The three you'll actually touch:
-
-```dotenv
-OPENCODE_API_KEY="sk-..."               # required for opencode/*
-OPENCODE_OPENAI_MODELS="mimo-v2.5-pro"  # hybrid routing (see above)
-MODEL_OPUS="opencode/mimo-v2.5-pro"     # override per Claude family, optional
-```
-
-Valid provider prefixes are `opencode/` and `open_router/`. Any other prefix
-fails fast at startup with a clear error.
-
-## Point Claude Code at it
+## Client setup
 
 `~/.claude/settings.json`:
 
@@ -96,20 +58,34 @@ fails fast at startup with a clear error.
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:8082",
-    "ANTHROPIC_AUTH_TOKEN": "freecc"
+    "ANTHROPIC_AUTH_TOKEN": "any-key"
   }
 }
 ```
 
-`ANTHROPIC_AUTH_TOKEN` is a placeholder unless you also set
-`ANTHROPIC_AUTH_TOKEN` in this proxy's `.env` (then the two must match).
+`ANTHROPIC_AUTH_TOKEN` is a placeholder unless the proxy's `.env` also sets it (then both must match — constant-time compared).
 
-### Auto-start on every session (optional)
+## Behavior
 
-If you'd rather not remember to launch the proxy, a Claude Code `SessionStart`
-hook can bring it up on demand. Drop a script at `~/.claude/hooks/start-proxy.sh`
-that curls `/health` first, `nohup`s the binary only if it's not already up, and
-waits up to ~3s for the port to open — then wire it into `~/.claude/settings.json`:
+- **Translator**: text, thinking (`reasoning_content` or inline `<think>...</think>`), tool calls. No images, no heuristic text→tool_use parser.
+- **Token estimate**: `chars/4` bias-high feeds `message_start.usage.input_tokens` and `/v1/messages/count_tokens` so Claude Code auto-compaction fires before upstream window overflows.
+- **Rate limit**: rolling window + reactive 429 cooldown + concurrency semaphore. Strict FIFO.
+- **Retry**: up to 3 attempts on 429. Honors `Retry-After`; otherwise 2s→60s exponential + jitter. Retries don't recharge the rate window.
+- **Stream cancel**: client disconnect → upstream `AbortSignal` fires → generator `finally` releases concurrency slot.
+- **Auth**: constant-time compare via `crypto.timingSafeEqual`. Inbound auth headers never forwarded upstream.
+
+## Binary
+
+```
+cc-opencodego-proxy            start on $HOST:$PORT
+cc-opencodego-proxy --version
+cc-opencodego-proxy --help
+cc-opencodego-proxy --quiet | --log-file PATH
+```
+
+`.env` picked up from binary's working directory.
+
+## Auto-start hook (optional)
 
 ```json
 {
@@ -122,42 +98,47 @@ waits up to ~3s for the port to open — then wire it into `~/.claude/settings.j
 }
 ```
 
-## Project layout
+Hook script: curl `/health`, `nohup` binary if down, wait ~3s for port.
+
+## Development
+
+```bash
+bun install
+bun run dev            # --watch
+bun run check          # biome + tsc
+bun run lint:fix
+bun test               # 59 tests across sse/config/translate/rate-limit
+```
+
+## Layout
 
 ```
 src/
-├── server.ts                # Bun.serve + routes
-├── config.ts                # env parsing + model resolver
-├── rate-limit.ts            # rolling-window limiter + concurrency cap
-├── sse.ts                   # SSE frame builder + upstream line parser
-├── translate.ts             # Anthropic ↔ OpenAI request/stream conversion
-├── types.ts                 # shared request/response shapes
+├── cli.ts                   binary entry + log sink
+├── server.ts                Bun.serve + routes + auth
+├── config.ts                env parsing, model resolver
+├── rate-limit.ts            rolling window + concurrency cap
+├── sse.ts                   frame builder + line parser
+├── translate.ts             Anthropic ↔ OpenAI request/stream
+├── types.ts
 └── providers/
-    ├── dispatcher.ts        # routes per request.provider + resolved model
-    ├── anthropic-passthrough.ts  # Opencode /messages passthrough
-    └── openai-compat.ts     # shared /chat/completions + re-framing
+    ├── dispatcher.ts        per-request route by provider
+    ├── anthropic-passthrough.ts
+    └── openai-compat.ts     /chat/completions + re-framing
+tests/
+├── sse.test.ts
+├── config.test.ts
+├── translate.test.ts
+└── rate-limit.test.ts
 ```
 
 ## Intentional gaps
 
-- **No messaging layer** — Discord / Telegram / voice bots are out of scope.
-- **No tiktoken** — `count_tokens` uses a `chars / 4` estimator, good enough
-  for Claude Code's quota probes.
-- **No image blocks** — the translator drops `image` content blocks when
-  converting to OpenAI format. Add later if needed.
-- **No heuristic tool-call parser** (text → `tool_use`); native `tool_calls`
-  deltas work fine for the models this proxy targets today.
-
-## Verified end-to-end
-
-Against the real OpenCode Go endpoint:
-
-- `claude-sonnet-4-20250514` → `minimax-m2.7` (Anthropic passthrough):
-  thinking blocks preserved, content streamed verbatim.
-- `claude-opus-4-20250514` → `mimo-v2.5-pro` (OpenAI translator):
-  `/v1/chat/completions` deltas re-framed as `content_block_delta` / `text_delta`,
-  finishing with a proper `message_stop`.
+- No tiktoken — `count_tokens` uses `chars/4`, good enough for Claude Code quota probes.
+- No image blocks in OpenAI translator path. Anthropic passthrough forwards verbatim.
+- No text→tool_use heuristic; native `tool_calls` deltas only.
+- No Discord/Telegram/voice bots.
 
 ## License
 
-MIT.
+See LICENSE.
